@@ -1,3 +1,7 @@
+---
+inclusion: auto
+---
+
 # Figma-to-Component Conversion Guide
 
 This steering file provides detailed instructions for converting Figma MCP output into production-ready React components. Activate this guide when using the Figma to Component power.
