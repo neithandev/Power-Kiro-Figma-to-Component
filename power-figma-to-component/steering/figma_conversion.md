@@ -159,10 +159,28 @@ const MOCK_ITEMS = [
 - Use realistic quantities (not just 1-2 items — use 3-5 for lists)
 - Include edge cases in mock data (long names, zero values, empty arrays)
 
+## Component Export Rule
+
+**Always use `export const` with arrow function syntax for all components.** Never use `export default function` or `export function` declarations.
+
+```tsx
+// ✅ CORRECT
+export const Login: React.FC<LoginProps> = ({ onSubmit }) => {
+  return <div>...</div>;
+};
+
+// ❌ WRONG — do NOT use function declarations
+export default function Login() { ... }
+export function Login() { ... }
+```
+
+This applies to all components: pages, feature components, and shared/reusable components.
+
 ## Code Quality Checklist
 
 After generating each component, verify:
 
+- [ ] Component uses `export const` arrow function syntax (no `export default function` or `export function`)
 - [ ] No existing component was recreated
 - [ ] No `any` type used
 - [ ] No type casts (`as Type`) unless explicitly allowed by steering

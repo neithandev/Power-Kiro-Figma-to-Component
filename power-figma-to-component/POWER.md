@@ -244,7 +244,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'details', label: 'Details' },
 ];
 
-export default function FeaturePage() {
+export const FeaturePage = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   return (
@@ -254,7 +254,7 @@ export default function FeaturePage() {
       {activeTab === 'details' && <DetailsSection />}
     </div>
   );
-}
+};
 ```
 
 ### List Page with Filters
@@ -269,7 +269,7 @@ const MOCK_ITEMS = [
   { id: 3, name: 'Item Three', status: 'active' },
 ];
 
-export default function ListPage() {
+export const ListPage = () => {
   const [search, setSearch] = useState('');
 
   return (
@@ -283,7 +283,7 @@ export default function ListPage() {
       </div>
     </div>
   );
-}
+};
 ```
 
 ---
@@ -316,6 +316,7 @@ export default function ListPage() {
 
 ## Best Practices
 
+- **Always use `export const` arrow function syntax** for all components — never use `export default function` or `export function`. Example: `export const MyComponent: React.FC<Props> = (props) => { ... };`
 - Always scan the project's component directory before creating anything new
 - When in doubt about splitting, split — smaller components are easier to maintain
 - Keep page components thin — they orchestrate, they don't implement
