@@ -98,6 +98,8 @@ A IA vai:
 4. Ler suas regras de steering
 5. Gerar os componentes seguindo todas as regras
 
+> 💡 **Dica:** O resultado melhora significativamente quando você envia um print (screenshot) do componente junto ao link do Figma. A imagem ajuda a IA a entender melhor o layout, espaçamentos, hierarquia visual e detalhes que nem sempre são capturados com precisão apenas pelos dados da API do Figma. Basta arrastar a imagem para o chat ou clicar no ícone de anexo.
+
 ---
 
 ## 🏗️ Bases para Código de Qualidade
