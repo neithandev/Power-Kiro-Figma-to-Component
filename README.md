@@ -104,14 +104,7 @@ Para obter o melhor resultado, use o prompt modelo abaixo como base:
 > - [Opcional: descreva brevemente o que a página faz]
 > - [Opcional: mencione estados específicos se o Figma não mostra todos, ex: "Preciso também de loading com skeleton e empty state"]
 >
-> Siga o fluxo completo do power Figma to Component:
-> 1. Busque os dados via Framelink MCP
-> 2. Mapeie os design tokens (cores, fontes, espaçamentos) para o tailwind.config do projeto — registre novas cores se necessário
-> 3. Escaneie os componentes existentes em src/components/ e a icon library antes de criar qualquer coisa
-> 4. Leia todos os steering files em .kiro/steering/
-> 5. Planeje a árvore de componentes antes de gerar código
-> 6. Gere cada componente seguindo todas as regras
-> 7. Faça a revisão de fidelidade visual e documente divergências com // NOTE:
+> Siga o fluxo completo do power Figma to Component.
 
 #### Por que cada parte importa
 
@@ -119,7 +112,7 @@ Para obter o melhor resultado, use o prompt modelo abaixo como base:
 - **Screenshot** — melhora significativamente a fidelidade. A IA consegue "ver" o layout real e não depender só dos dados estruturais do MCP, que às vezes perdem nuances visuais. Basta arrastar a imagem para o chat ou clicar no ícone de anexo.
 - **Nome e contexto da página** — ajuda a IA a nomear os arquivos corretamente (ex: `DashboardPage.tsx`, `DashboardMetricCard.tsx`) e a gerar mock data com conteúdo realista pro domínio.
 - **Menção a estados extras** — o Figma geralmente mostra só o "happy path". Se você precisa de loading, empty ou error, precisa pedir explicitamente, senão a IA vai gerar só o estado default e marcar os outros com `// TODO`.
-- **Listar os passos** — reforça pra IA seguir o fluxo completo. Sem isso, ela pode pular etapas como o mapeamento de tokens ou a revisão de fidelidade.
+- **Reforço ao fluxo completo** — reforça pra IA seguir o fluxo completo. Sem isso, ela pode pular etapas como o mapeamento de tokens ou a revisão de fidelidade.
 
 #### Variações úteis
 
