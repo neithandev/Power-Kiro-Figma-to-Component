@@ -91,7 +91,69 @@ Since APIs may not exist yet:
 - Comment mock data clearly: `// TODO: Replace with API data`
 - Use 3-5 items for lists (not just 1-2) and include edge cases (long names, zero values, empty arrays)
 
-### 5. Follow Project Steering Rules
+### 5. Design Token Mapping (Colors, Fonts, Spacing)
+
+The Figma MCP returns raw values (hex colors, px font sizes, px spacing). These must be **mapped to the project's design system** before generating any code.
+
+**Process:**
+1. Read the project's `tailwind.config` (or equivalent) to understand the existing color palette, font scale, and spacing scale.
+2. For every color extracted from Figma, find the closest match in the project's Tailwind palette.
+3. For every font size, map to the nearest Tailwind text class (`text-xs`, `text-sm`, `text-base`, etc.).
+4. For every spacing value, map to the nearest Tailwind spacing class (`gap-2`, `p-4`, `mt-6`, etc.).
+
+**Color mapping rules:**
+- If the Figma color matches an existing Tailwind color → use it (e.g., `#EF4444` → `red-500`).
+- If the Figma color is close to an existing color (within ~5% hue/saturation) → use the existing color.
+- If the Figma color has **no match** in the project palette → **register it as a new custom color** in `tailwind.config` using the Tailwind shade convention, then use the new token. Example: Figma uses `#1A1A2E` which has no match → add `'midnight-900': '#1A1A2E'` to the Tailwind config `colors` section, then use `bg-midnight-900` in the component.
+- **Never use arbitrary hex values** like `text-[#1A1A2E]` in components. Always create a named token first.
+- When creating a new color, pick a descriptive name and assign the appropriate shade number (50-950) based on lightness.
+
+**Font mapping rules:**
+- Map Figma font sizes to the closest Tailwind text utility.
+- If the project uses a custom font scale in Tailwind config, use that scale.
+- Never use arbitrary font sizes like `text-[17px]` — round to the nearest Tailwind class.
+
+### 6. Icon and Asset Strategy
+
+Icons are the most common asset extracted from Figma. Handle them systematically:
+
+**Discovery first:**
+1. Check if the project uses an icon library (Lucide, Heroicons, Phosphor, React Icons, etc.) — look in `package.json` and existing imports.
+2. Check if the project has a custom icons folder (`src/assets/icons/`, `src/components/icons/`, `public/icons/`).
+3. Check if the project has an Icon wrapper component that standardizes size/color props.
+
+**Rules:**
+- If the Figma icon has an equivalent in the project's icon library → **use the library icon**. Do not download the SVG.
+- If the Figma icon has no equivalent in the library → **download the SVG** via `mcp_Framelink_Figma_MCP_download_figma_images` and create a component following the project's icon pattern.
+- Never paste raw SVG markup inline in a component's JSX. Always create a dedicated icon component or use the project's icon system.
+- Icon components should accept `size` (or `className`) and `color` props to remain flexible.
+- Place downloaded icons in the project's existing icons directory.
+- Name icon files consistently with the project's convention (e.g., `IconArrowLeft.tsx`, `arrow-left.svg`).
+
+**Icon component pattern (when no library match exists):**
+```tsx
+interface IconCustomProps {
+  size?: number;
+  className?: string;
+}
+
+export const IconCustom: React.FC<IconCustomProps> = ({ size = 24, className }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* SVG paths from Figma */}
+    </svg>
+  );
+};
+```
+
+### 7. Follow Project Steering Rules
 
 Before generating any code, **read all steering files** present in the project's `.kiro/steering/` directory. These contain the project's specific rules for:
 - Styling (Tailwind usage, forbidden patterns, allowed exceptions)
@@ -130,21 +192,32 @@ Parameters:
   localPath: "public/images/icons"   // or "src/assets" depending on project convention
 ```
 
-### Step 2: Analyze the Design
+### Step 2: Map Design Tokens
+
+Before analyzing the design structure, map all raw Figma values to the project's design system:
+
+1. **Read `tailwind.config`** (or equivalent) to understand the existing color palette, font scale, and spacing scale.
+2. **Extract all unique colors** from the Figma data and map each to the closest Tailwind token. If no match exists, register a new custom color in `tailwind.config` with a descriptive name and shade number.
+3. **Extract all font sizes** and map to Tailwind text utilities (`text-xs`, `text-sm`, `text-base`, etc.).
+4. **Extract all spacing values** and map to Tailwind spacing utilities (`gap-2`, `p-4`, `m-6`, etc.).
+5. **Document the mapping** — before generating code, list the token mapping so the user can review it (e.g., "Figma `#1A1A2E` → new token `midnight-900`").
+
+### Step 3: Analyze the Design
 
 Before writing any code:
 
 1. **Scan existing components** — List the project's `src/components/` directory and identify which base components already exist that match elements in the design.
 2. **Read all steering files** — Load every `.md` file from `.kiro/steering/` to understand the project's rules.
-3. **Identify reusable components** — Which parts of the design map to existing components?
-4. **Plan the component tree** — How should this screen be split? What is the page, what are the feature components, what are shared components?
-5. **Identify responsive breakpoints** — Where does the layout need to change for mobile vs desktop?
-6. **Identify state** — What interactive states exist (loading, empty, error, hover, active)?
-7. **Identify data shape** — What mock data structure is needed?
+3. **Scan icon library** — Check `package.json` for icon libraries and the project's icon folder. Map Figma icons to existing library icons where possible.
+4. **Identify reusable components** — Which parts of the design map to existing components?
+5. **Plan the component tree** — How should this screen be split? What is the page, what are the feature components, what are shared components?
+6. **Identify responsive breakpoints** — Where does the layout need to change for mobile vs desktop?
+7. **Identify all UI states** — Map every interactive state visible in the design: default, hover, active, focus, disabled, loading, empty, error. For states not shown in the Figma, add `// TODO: Design pending for [state] state`.
+8. **Identify data shape** — What mock data structure is needed?
 
-### Step 3: Generate Components
+### Step 4: Generate Components
 
-For each component identified in Step 2:
+For each component identified in Step 3:
 
 1. **Create the component** following all steering rules:
    - Component interface at the top of the file
@@ -152,23 +225,31 @@ For each component identified in Step 2:
    - Tailwind-only styling (no inline styles except project-allowed exceptions)
    - Responsive classes for mobile support
    - Reuse existing base components
+   - Use mapped design tokens (never raw hex values)
+   - Use icon library components (never inline SVG)
 
 2. **Place the file** in the correct location per the project's conventions:
    - Reusable component → `src/components/`
    - Page-specific component → page subfolder or `src/components/` with scoped naming
    - Page → `src/pages/`
 
-### Step 4: Review and Refine
+### Step 5: Visual Fidelity Review
 
-After generating all components:
+After generating all components, compare the output against the original Figma design (screenshot or MCP data):
 
-1. Verify no existing component was recreated
-2. Verify no inline styles were used (except allowed exceptions per steering)
-3. Verify responsive design (no fixed widths on containers)
-4. Verify component interfaces are properly typed
-5. Verify mock data matches expected DTO shapes
-6. Verify each component file has a single responsibility
-7. Verify all steering rules are respected
+1. **Layout fidelity** — Does the component structure match the Figma layout? Are elements in the correct order and hierarchy?
+2. **Spacing fidelity** — Do gaps, paddings, and margins visually match the design? (using the mapped Tailwind tokens)
+3. **Color fidelity** — Are all colors correctly mapped to project tokens? No raw hex values in components?
+4. **Typography fidelity** — Are font sizes, weights, and line heights consistent with the design?
+5. **Icon fidelity** — Are all icons present and correctly sized?
+6. **State fidelity** — Are hover, active, focus, and disabled states implemented?
+7. **Document divergences** — If any aspect intentionally deviates from the Figma (e.g., using project's `shadow-md` instead of Figma's `shadow-xl`), add a comment explaining why: `// NOTE: Using project standard shadow-md instead of Figma shadow-xl per design system`
+8. Verify no existing component was recreated
+9. Verify responsive design (no fixed widths on containers)
+10. Verify component interfaces are properly typed
+11. Verify mock data matches expected DTO shapes
+12. Verify each component file has a single responsibility
+13. Verify all steering rules are respected
 
 ---
 
@@ -303,8 +384,10 @@ export const ListPage = () => {
 
 ### Design Uses Colors Not in the Project Palette
 
-- Check if the color is close to an existing palette color and use that
-- If it's genuinely new, use the exact hex value with Tailwind arbitrary values: `text-[#HEXCODE]`
+- Read the project's `tailwind.config` to understand the existing palette.
+- If the Figma color is close to an existing palette color (within ~5% hue/saturation) → use the existing token.
+- If the Figma color has no match → **register it as a new custom color** in `tailwind.config` with a descriptive name and shade number (e.g., `'midnight-900': '#1A1A2E'`), then use the new token (`bg-midnight-900`).
+- **Never use arbitrary hex values** like `text-[#1A1A2E]` in components.
 
 ### Component Seems Too Large
 
@@ -328,6 +411,11 @@ export const ListPage = () => {
 - Always type component props with an interface — never inline object types
 - Follow the project's file naming convention (check steering for snake_case, kebab-case, etc.)
 - Check the project's existing icon library before creating new SVG icon components
+- **Never use raw hex values** in components — always map to a named Tailwind token (existing or newly registered)
+- **Never paste raw SVG inline** in component JSX — always use the project's icon system or create a dedicated icon component
+- **Order Tailwind classes consistently**: layout → sizing → spacing → typography → colors → borders → effects → transitions → responsive modifiers. If the project uses `prettier-plugin-tailwindcss`, follow its ordering.
+- **Props naming convention**: boolean props use `is`/`has` prefix (`isOpen`, `isLoading`, `hasError`); event handler props use `on` prefix (`onClick`, `onClose`, `onSubmit`); internal handler functions use `handle` prefix (`handleClick`, `handleClose`, `handleSubmit`)
+- **Document visual divergences** — when the generated code intentionally differs from the Figma design (e.g., using project standard instead of Figma value), add a comment explaining the reason
 
 ---
 

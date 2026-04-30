@@ -40,16 +40,21 @@ Arquivo principal que a IA carrega ao ativar o power. Contém:
 
 ### `figma_conversion.md`
 
-Steering file auxiliar com `inclusion: manual` — você ativa via `#` no chat do Kiro quando precisar. Contém:
+Steering file auxiliar com `inclusion: always` — é incluído automaticamente sempre que o power é ativado. Contém:
 
-- **Checklist pré-conversão** — o que fazer antes de escrever qualquer código
+- **Checklist pré-conversão** — o que fazer antes de escrever qualquer código (incluindo leitura do `tailwind.config` e scan de icon library)
+- **Mapeamento de design tokens** — regras detalhadas para mapear cores, fontes e espaçamentos do Figma para tokens Tailwind do projeto, incluindo registro de novas cores no `tailwind.config`
+- **Estratégia de ícones e assets** — como descobrir e reutilizar a icon library do projeto, quando baixar SVGs, padrão de componente de ícone
 - **Regras de mapeamento de componentes** — lista de elementos comuns de frontend (botões, modais, inputs, tabs, etc.) que a IA deve procurar no projeto antes de criar novos
 - **Estratégia de divisão** — quando criar um novo arquivo de componente, hierarquia de componentes, onde colocar cada arquivo
 - **Regras de design responsivo** — padrões permitidos, padrões proibidos, tamanhos fixos permitidos
-- **Regras de estilização** — instruções para seguir as regras de styling do projeto
+- **Regras de estilização** — instruções para seguir as regras de styling do projeto (sem hex arbitrário, ordem de classes Tailwind)
+- **Ordenação de classes Tailwind** — ordem padrão consistente: layout → sizing → spacing → typography → colors → borders → effects → transitions → states → responsive
+- **Convenção de naming de props e handlers** — `is`/`has` para booleans, `on` para event props, `handle` para handlers internos
+- **Revisão de fidelidade visual** — checklist de comparação com o Figma, documentação de divergências com comentários `// NOTE:`
 - **Diretrizes de dados mockados** — estrutura, regras, boas práticas
-- **Checklist de qualidade** — verificação final para cada componente gerado
-- **Resumo do processo** — fluxo completo em 7 passos
+- **Checklist de qualidade completo** — verificação final categorizada (export, reuso, TypeScript, tokens, styling, interatividade, naming, dados, fidelidade visual)
+- **Resumo do processo** — fluxo completo em 11 passos
 
 ### `mcp.json`
 
@@ -84,21 +89,48 @@ O arquivo `mcp.json` já vem incluso dentro da pasta do power, pronto para uso. 
 
 ### Uso no Chat
 
-Basta enviar uma mensagem como:
+Para obter o melhor resultado, use o prompt modelo abaixo como base:
 
 ```
-Converta este design do Figma em componentes:
-https://www.figma.com/design/XXXXX/MeuProjeto?node-id=123-456
+Converta este design do Figma em componentes React para o meu projeto.
+
+Link do Figma: https://www.figma.com/design/XXXXX/MeuProjeto?node-id=123-456
+
+[arraste o print/screenshot da tela aqui]
+
+Contexto:
+- Esta é a página de [nome da página, ex: "Dashboard", "Login", "Listagem de Produtos"]
+- [Opcional: descreva brevemente o que a página faz, ex: "Exibe um resumo de vendas com cards de métricas, gráfico de evolução e tabela de últimas transações"]
+- [Opcional: mencione estados específicos se o Figma não mostra todos, ex: "O Figma só mostra o estado com dados. Preciso também de loading com skeleton e empty state"]
+
+Siga o fluxo completo do power Figma to Component.
+
+#### Por que cada parte importa
+
+- **Link do Figma** — é o input obrigatório pro MCP buscar os dados da tela.
+- **Screenshot** — melhora significativamente a fidelidade. A IA consegue "ver" o layout real e não depender só dos dados estruturais do MCP, que às vezes perdem nuances visuais. Basta arrastar a imagem para o chat ou clicar no ícone de anexo.
+- **Nome e contexto da página** — ajuda a IA a nomear os arquivos corretamente (ex: `DashboardPage.tsx`, `DashboardMetricCard.tsx`) e a gerar mock data com conteúdo realista pro domínio.
+- **Menção a estados extras** — o Figma geralmente mostra só o "happy path". Se você precisa de loading, empty ou error, precisa pedir explicitamente, senão a IA vai gerar só o estado default e marcar os outros com `// TODO`.
+- **Reforço do fluxo completo** — reforça pra IA seguir o fluxo completo. Sem isso, ela pode pular etapas como o mapeamento de tokens ou a revisão de fidelidade.
+
+#### Variações úteis
+
+Se for um **modal** ao invés de uma página:
+```
+Este design é um modal de [descrição]. Use o componente Dialog/Modal existente do projeto como base.
 ```
 
-A IA vai:
-1. Buscar os dados do Figma via MCP
-2. Analisar o design
-3. Escanear seus componentes existentes
-4. Ler suas regras de steering
-5. Gerar os componentes seguindo todas as regras
+Se quiser que a IA **não crie novos componentes base** (só use os existentes):
+```
+Use apenas componentes que já existem em src/components/. Se algo não existir, me avise antes de criar.
+```
 
-> 💡 **Dica:** O resultado melhora significativamente quando você envia um print (screenshot) do componente junto ao link do Figma. A imagem ajuda a IA a entender melhor o layout, espaçamentos, hierarquia visual e detalhes que nem sempre são capturados com precisão apenas pelos dados da API do Figma. Basta arrastar a imagem para o chat ou clicar no ícone de anexo.
+Se o projeto já tem **dados reais** (API pronta):
+```
+Não gere mock data. O hook useProducts() já retorna os dados necessários. Use-o diretamente.
+```
+
+> 💡 **Resumo:** Quanto mais contexto sobre a página e o que você espera, melhor o resultado. O power já cuida de toda a parte técnica (tokens, reuso, splitting, fidelidade) — o prompt só precisa dar o "o quê" e o "onde".
 
 ---
 
@@ -128,6 +160,25 @@ A IA escaneia `src/components/` (ou equivalente) antes de criar qualquer coisa. 
 - Ícones SVG
 
 Se existe → usa. Se precisa de extensão → estende. Só cria novo se não houver nada equivalente.
+
+### Mapeamento de Design Tokens
+
+A IA nunca usa valores hex arbitrários nos componentes. Antes de gerar código:
+
+- Lê o `tailwind.config` do projeto para entender a paleta existente
+- Mapeia cada cor do Figma para o token Tailwind mais próximo
+- Se uma cor não tem match, **registra uma nova cor** no `tailwind.config` com nome descritivo e shade number (ex: `'midnight-900': '#1A1A2E'`)
+- Mapeia font sizes e espaçamentos para as classes Tailwind mais próximas
+- Resultado: zero valores arbitrários como `text-[#1A1A2E]` ou `text-[17px]` nos componentes
+
+### Estratégia de Ícones
+
+A IA não cola SVG inline nos componentes. Antes de criar qualquer ícone:
+
+- Verifica se o projeto usa uma icon library (Lucide, Heroicons, Phosphor, etc.)
+- Se o ícone do Figma tem equivalente na library → usa a library
+- Se não tem → baixa o SVG e cria um componente de ícone dedicado seguindo o padrão do projeto
+- Ícones sempre ficam na pasta de ícones do projeto, nunca inline no JSX
 
 ### Divisão Inteligente
 
@@ -169,10 +220,35 @@ Antes de gerar código, a IA lê todos os arquivos `.kiro/steering/*.md` do proj
 - Interfaces para props de componentes
 - Dados mockados tipados conforme DTOs do projeto
 
+### Ordenação de Classes Tailwind
+
+Todas as classes Tailwind seguem uma ordem consistente para melhorar legibilidade:
+
+layout → sizing → spacing → typography → colors → borders → effects → transitions → states → responsive
+
+Se o projeto usa `prettier-plugin-tailwindcss`, a ordenação automática do plugin é respeitada.
+
+### Convenção de Naming
+
+Props e handlers seguem padrões consistentes:
+
+- Booleans: prefixo `is`/`has` (`isOpen`, `isLoading`, `hasError`)
+- Event handlers (props): prefixo `on` (`onClick`, `onClose`, `onSubmit`)
+- Handlers internos: prefixo `handle` (`handleClick`, `handleClose`)
+
+### Revisão de Fidelidade Visual
+
+Após gerar os componentes, a IA compara o resultado com o design original do Figma:
+
+- Verifica layout, espaçamentos, cores, tipografia, ícones e estados
+- Quando diverge intencionalmente do Figma (ex: usar shadow do projeto ao invés do Figma), documenta com comentário `// NOTE:`
+- Garante que nenhum detalhe visual importante foi perdido na conversão
+
 ---
 
 ## ✅ Boas Práticas
 
+- Sempre use `export const` com arrow function para todos os componentes
 - Sempre escaneie os componentes existentes antes de criar novos
 - Na dúvida entre dividir ou não, divida — componentes menores são mais fáceis de manter
 - Páginas devem ser finas — orquestram, não implementam
@@ -183,6 +259,11 @@ Antes de gerar código, a IA lê todos os arquivos `.kiro/steering/*.md` do proj
 - Nomeie dados mockados claramente: `MOCK_USERS`, `MOCK_PRODUCTS`
 - Sempre marque dados mockados com `// TODO: Replace with API data`
 - Siga a convenção de naming do projeto (verifique steering)
+- Nunca use valores hex arbitrários — sempre mapeie para tokens Tailwind nomeados
+- Nunca cole SVG inline no JSX — use a icon library ou crie um componente de ícone
+- Ordene classes Tailwind consistentemente (layout → sizing → spacing → typography → colors → borders → effects)
+- Use prefixos consistentes: `is`/`has` para booleans, `on` para event props, `handle` para handlers internos
+- Documente divergências visuais com comentários `// NOTE:`
 
 ---
 
@@ -193,7 +274,7 @@ Antes de gerar código, a IA lê todos os arquivos `.kiro/steering/*.md` do proj
 | MCP retorna dados vazios | Verifique `fileKey` e `nodeId`. Tente sem `nodeId` primeiro. |
 | Erro de autenticação Figma | Verifique se o token tem permissão de leitura no arquivo. |
 | Fontes customizadas no design | A IA usa a fonte padrão do projeto (verifique Tailwind config). |
-| Cores fora da paleta | A IA usa valores arbitrários do Tailwind: `text-[#HEXCODE]`. |
+| Cores fora da paleta | A IA registra novas cores no `tailwind.config` com nome descritivo e shade number. Nunca usa hex arbitrário. |
 | Componente ficou muito grande | Divida em sub-componentes. Extraia lógica para hooks/utils. |
 
 ---
