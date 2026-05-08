@@ -64,13 +64,17 @@ Never generate a single monolithic component for an entire screen. Follow these 
 
 **Hierarchy pattern:**
 ```
-PageName.tsx (page)
-├── PageNameHeader.tsx (page-specific header if custom)
-├── PageNameFilters.tsx (filter section)
-├── PageNameList.tsx (list/grid of items)
-│   └── PageNameCard.tsx (individual card)
-├── PageNameModal.tsx (modal if present)
-└── PageNameEmptyState.tsx (empty state)
+src/pages/PageName.tsx (page orchestrator)
+src/components/{feature}/
+├── FeatureHeader.tsx (page-specific header if custom)
+├── FeatureFilters.tsx (filter section)
+├── FeatureList.tsx (list/grid of items)
+│   └── FeatureCard.tsx (individual card)
+├── FeatureModal.tsx (modal if present)
+├── FeatureEmptyState.tsx (empty state)
+└── FeatureIcon.tsx (SVG icons for this feature)
+src/consts/feature-config.ts (constants/config)
+src/utils/feature.utils.ts (utility functions)
 ```
 
 ### 3. Mobile-First Responsive Design
@@ -121,33 +125,42 @@ Icons are the most common asset extracted from Figma. Handle them systematically
 1. Check if the project uses an icon library (Lucide, Heroicons, Phosphor, React Icons, etc.) — look in `package.json` and existing imports.
 2. Check if the project has a custom icons folder (`src/assets/icons/`, `src/components/icons/`, `public/icons/`).
 3. Check if the project has an Icon wrapper component that standardizes size/color props.
+4. **Check if the project already has an established folder pattern** — if so, follow it exactly.
 
 **Rules:**
 - If the Figma icon has an equivalent in the project's icon library → **use the library icon**. Do not download the SVG.
-- If the Figma icon has no equivalent in the library → **download the SVG** via `mcp_Framelink_Figma_MCP_download_figma_images` and create a component following the project's icon pattern.
-- Never paste raw SVG markup inline in a component's JSX. Always create a dedicated icon component or use the project's icon system.
-- Icon components should accept `size` (or `className`) and `color` props to remain flexible.
-- Place downloaded icons in the project's existing icons directory.
-- Name icon files consistently with the project's convention (e.g., `IconArrowLeft.tsx`, `arrow-left.svg`).
+- If the Figma icon has no equivalent in the library → **create an SVG icon component** inside the feature's component folder: `/components/{feature}/IconName.tsx`. Download the SVG via `mcp_Framelink_Figma_MCP_download_figma_images` if needed.
+- Never paste raw SVG markup inline in a component's JSX. Always create a dedicated icon component.
+- Icon components should accept `width`, `height`, `color`, and `className` props to remain flexible.
+- Place icon components alongside the feature components that use them (e.g., `/components/pomodoro/PomodoroPlayIcon.tsx`).
+- Name icon files with the feature prefix and descriptive name (e.g., `PomodoroPlayIconLarge.tsx`, `ProductCartIcon.tsx`).
+- **If the project already has an established icon pattern/folder structure, follow that pattern instead.**
 
 **Icon component pattern (when no library match exists):**
 ```tsx
-interface IconCustomProps {
-  size?: number;
+interface IconProps {
+  width?: number;
+  height?: number;
+  color?: string;
   className?: string;
 }
 
-export const IconCustom: React.FC<IconCustomProps> = ({ size = 24, className }) => {
+export const PomodoroPlayIconLarge: React.FC<IconProps> = ({
+  width = 32,
+  height = 32,
+  color = '#629737',
+  className = '',
+}) => {
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
+      width={width}
+      height={height}
+      viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
+      className={`flex-shrink-0 ${className}`}
     >
-      {/* SVG paths from Figma */}
+      <path d="M11 7L25 16L11 25V7Z" fill={color} />
     </svg>
   );
 };
@@ -166,6 +179,93 @@ Before generating any code, **read all steering files** present in the project's
 - General architecture (file naming, imports, TypeScript rules)
 
 **Every generated component must comply with all active steering rules.**
+
+### 8. File Organization (Constants, Utils, Component Grouping)
+
+**IMPORTANT: If the project already has an established folder structure or pattern, always follow the existing pattern. The rules below are defaults when no pattern exists.**
+
+**Constants** — Configuration objects, state mappings, option arrays, and similar static data must be extracted into dedicated files:
+- Place in `/consts/` folder (or the project's equivalent)
+- Name the file descriptively: `/consts/pomodoro-states.ts`, `/consts/product-categories.ts`
+- Never leave large config objects inside component files
+
+```tsx
+// /consts/pomodoro-states.ts
+export const STATE_CONFIG = {
+  initial: {
+    gradient: 'linear-gradient(180deg, rgba(239, 248, 255, 1) 0%, rgba(255, 255, 255, 1) 100%)',
+    borderColor: '#B2DDFF',
+    chipLabel: 'Pomodoro',
+  },
+  study: {
+    gradient: 'linear-gradient(180deg, rgba(255, 192, 188, 1) 0%, rgba(255, 255, 255, 1) 100%)',
+    borderColor: '#FFB6B5',
+    chipLabel: 'Estudar',
+  },
+};
+```
+
+**Utility functions** — Calculation functions, formatters, parsers, and helper logic must be extracted into dedicated util files:
+- Place in `/utils/` folder (or the project's equivalent)
+- Name with the pattern: `/utils/{subject}.utils.ts`
+- Examples: `/utils/time.utils.ts`, `/utils/currency.utils.ts`, `/utils/pomodoro.utils.ts`
+- Never leave utility functions inside component files
+
+```tsx
+// /utils/time.utils.ts
+export const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+```
+
+**Component grouping by feature** — When creating multiple components for the same feature/domain, group them in a subfolder:
+- Structure: `/components/{feature}/Component1.tsx`, `/components/{feature}/Component2.tsx`
+- Example: `/components/pomodoro/PomodoroTimer.tsx`, `/components/pomodoro/PomodoroControls.tsx`, `/components/pomodoro/PomodoroPlayIcon.tsx`
+- Icon components for that feature go in the same folder
+- This keeps related components together and easy to find
+
+```
+src/components/
+├── pomodoro/
+│   ├── PomodoroTimer.tsx
+│   ├── PomodoroControls.tsx
+│   ├── PomodoroPlayIconLarge.tsx
+│   └── PomodoroPauseIcon.tsx
+├── product/
+│   ├── ProductCard.tsx
+│   ├── ProductList.tsx
+│   └── ProductCartIcon.tsx
+└── shared/
+    ├── Button.tsx
+    └── Dialog.tsx
+```
+
+### 9. Inline Style Exceptions (Gradients)
+
+Complex CSS gradients (especially `linear-gradient` with multiple color stops or rgba values) are **allowed as inline `style` attributes**. These cannot be cleanly expressed as Tailwind classes.
+
+**Allowed inline styles:**
+- Complex `linear-gradient` / `radial-gradient` with multiple stops
+- `background` with gradient values from constants/config
+- Dynamic values interpolated from JavaScript variables
+
+**Pattern:**
+```tsx
+// ✅ CORRECT — gradient from constants, applied via style
+<div
+  style={{ background: STATE_CONFIG[currentState].gradient }}
+  className="flex flex-col items-center gap-4 rounded-2xl border p-6"
+>
+```
+
+```tsx
+// ❌ WRONG — trying to force complex gradients into Tailwind arbitrary values
+<div className="bg-[linear-gradient(180deg,rgba(239,248,255,1)_0%,rgba(255,255,255,1)_100%)]">
+```
+
+**Rule:** If a gradient is simple enough for Tailwind (e.g., `bg-gradient-to-b from-blue-50 to-white`), use Tailwind. If it has specific rgba stops or complex angles, use inline `style` with the value coming from a constant.
 
 ---
 
